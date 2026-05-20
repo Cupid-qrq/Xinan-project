@@ -1,0 +1,3 @@
+category: question_answering
+true_description: "The message response is the correct answer to the question asked."
+false_description: "The message has anything other than a direct correct answer to the question asked."

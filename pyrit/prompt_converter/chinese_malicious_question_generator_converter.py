@@ -1,0 +1,68 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
+
+import logging
+import pathlib
+from typing import Optional
+
+from pyrit.common.apply_defaults import REQUIRED_VALUE, apply_defaults
+from pyrit.common.path import CONVERTER_SEED_PROMPT_PATH
+from pyrit.models import PromptDataType, SeedPrompt
+from pyrit.prompt_converter.llm_generic_text_converter import LLMGenericTextConverter
+from pyrit.prompt_converter.prompt_converter import ConverterResult
+from pyrit.prompt_target import PromptChatTarget
+
+logger = logging.getLogger(__name__)
+
+
+class ChineseMaliciousQuestionGeneratorConverter(LLMGenericTextConverter):
+    """
+    Generates malicious-style domain questions in Chinese using an LLM.
+
+    An existing ``PromptChatTarget`` is used to perform the conversion (like Azure OpenAI).
+    """
+
+    @apply_defaults
+    def __init__(
+        self,
+        *,
+        converter_target: PromptChatTarget = REQUIRED_VALUE,  # type: ignore[assignment]
+        prompt_template: Optional[SeedPrompt] = None,
+    ) -> None:
+        """
+        Initialize the converter with a specific target and template.
+
+        Args:
+            converter_target (PromptChatTarget): The endpoint that converts the prompt.
+                Can be omitted if a default has been configured via PyRIT initialization.
+            prompt_template (SeedPrompt): The seed prompt template to use.
+        """
+        prompt_template = (
+            prompt_template
+            if prompt_template
+            else SeedPrompt.from_yaml_file(
+                pathlib.Path(CONVERTER_SEED_PROMPT_PATH) / "chinese_malicious_question_generator_converter.yaml"
+            )
+        )
+
+        super().__init__(converter_target=converter_target, system_prompt_template=prompt_template)
+
+    async def convert_async(self, *, prompt: str, input_type: PromptDataType = "text") -> ConverterResult:
+        """
+        Convert the input prompt into a Chinese malicious-style question.
+
+        Args:
+            prompt (str): The input prompt to convert.
+            input_type (PromptDataType): The type of the input prompt. Must be "text".
+
+        Returns:
+            ConverterResult: The result of the conversion.
+        """
+        self._prompt_kwargs["prompt"] = prompt
+        return await super().convert_async(prompt=prompt, input_type=input_type)
+
+    def input_supported(self, input_type: PromptDataType) -> bool:
+        return input_type == "text"
+
+    def output_supported(self, output_type: PromptDataType) -> bool:
+        return output_type == "text"
